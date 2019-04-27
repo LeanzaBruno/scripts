@@ -1,67 +1,45 @@
 #!/bin/bash
 
-usage() { echo "Uso: smn -m, --metar [CODIGO ICAO] -t, --taf [CODIGO ICAO]"; exit 1; }
+metar="METAR SAAV 271500Z 20011KT 9999 BKN010 OVC012 17/15 Q1016 =
+METAR SAAP 271500Z 18012KT 9999 BKN006 BKN010 18/15 Q1016 =
+METAR SAAR 271500Z 18011KT 9999 BKN009 BKN013 17/15 Q1015 =
+METAR SATR 271500Z 20006KT 8000 SCT008 OVC012 18/16 Q1015 =
+METAR SACO 271500Z 14004KT 9999 FEW020 21/13 Q1017 NOSIG ="
+taf="TAF SAAV 271100Z 2712/2812 23010KT 8000 -DZ OVC010 TX20/2719Z TN14/2810Z BECMG 2713/2716 9999 NSW BKN020 BECMG 2719/2721 25005KT SCT020 BECMG 2803/2806 5000 BR BECMG 2807/2810 VRB03KT 0800 FG BKN005 ="
 
-check_empty()
-{
-	if [[ ! -n "$1" ]]
-	then
-		usage
-	fi
-}
 
-not_an_option()
-{
-	if [[ "$1" == *"-m"* ]] || [[ "$1" == *"-t"* ]]
-	then
-		usage
-	fi
-	return 0
-}
-
-while [[ -n "$1" ]]
+while [[ $metar ]] || [[ $taf ]]
 do
-	case $1 in
-		"-mt" | "-tm")
-			shift
-			check_empty $1
-			while [[ -n "$1" ]] && not_an_option $1
-			do
-				METAR+="$1+"
-				TAF+="$1+"
+	metarFirstLine=$(echo "$metar" | head -1)
+	metarCode=(${metarFirstLine#METAR })
 
-				shift
-			done
-			;;
-		"-m" | "--metar")
-			shift
-			check_empty $1
-			while [[ -n "$1" ]] && not_an_option $1
-			do
-				METAR+="$1+"
-				shift
-			done
-			;;
-		"-t" | "--taf")
-			shift
-			check_empty $1
-			while [[ -n "$1" ]] && not_an_option $1
-			do
-				TAF+="$1+"
-				shift
-			done
-			;;
-		*)
-			usage
-			;;
-	esac
+	tafFirstLine=$( echo "$taf" | head -1 )
+	tafCode=(${tafFirstLine#TAF })
+
+	echo "--------"
+	if [[ $metarCode == $tafCode ]]; then
+
+		echo "$metarFirstLine"
+		echo "$tafFirstLine"
+	fi
+	echo "--------"
+
+	#Actualizar
+	metar=$( echo "$metar" | grep -v "$metarFirstLine" )
+	taf=$(echo "$taf" | grep -v "$tafFirstLine")
 done
 
 
-if [[ -n $METAR ]]
-then
-	echo "METARs: $METAR"
-else
-	echo "Metar esta vacio"
-fi
-echo "TAFs: $TAF"
+# while [[ -n $metar ]] || [[ -n $taf ]]
+# do
+# 	metarFirstLine=$(echo "$metar" | head -1)
+# 	tafFirstLine=$( echo "$taf" | head -1 )
+#
+# 	echo "--------"
+# 	echo "$metarFirstLine"
+# 	echo "$tafFirstLine"
+# 	echo "--------"
+#
+# 	metar=$( echo "$metar" | grep -v "$metarFirstLine" )
+# 	taf=$(echo "$taf" | grep -v "$tafFirstLine")
+# done
