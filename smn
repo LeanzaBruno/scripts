@@ -1,19 +1,43 @@
 #!/bin/bash
 
-search=$1
-n=2
-for n in "${@:2:$#}"
+search=$2
+n=3
+for n in "${@:3:$#}"
 do
 	search="$search+$n"
 done
 
-#Download the whole page and save it into a new file called result.html
-wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=metar&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${search}" -O result.html
+if [[ "$1" == *"m"* ]]; then
+				wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=metar&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${search}" -O metar.html
+fi
 
+if [[ "$1" == *"t"* ]]; then
+				wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=taf&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${search}" -O taf.html
+fi
 #El primer sed sirve para separar los mensajes, porque el SMN los tira todos en una sola linea y es dificil de leer así
 #el segundo grep deja solo los tags que contienen los mensajes
 #el tercer grep toma solamente el intervalo [METAR, "/></td>] segun la  estructura de la pag del smn
 #el ultimo sed es para eliminar del mensaje el "/></td>
-cat result.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' |  grep -Eo 'METAR.*"\/><\/td>' | sed 's!"\/><\/td>!!g'
-#remove the file
-rm result.html
+if [[ -f "metar.html" ]]; then
+	metar=$(cat metar.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' |  grep -Eo 'METAR.*"\/><\/td>' | sed -e 's!"\/><\/td>!!g')
+	rm metar.html
+fi
+
+if [[ -f "taf.html" ]]; then
+	taf=$(cat taf.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' |  grep -Eo 'TAF.*"\/><\/td>' | sed -e 's!"\/><\/td>!!g')
+	rm taf.html
+fi
+
+#Print the final data
+while [[ $metar != "" ]]
+do
+			metarFirstLine=$(echo "$metar" | head -1)
+			tafFirstLine=$( echo "$taf" | head -1 )
+
+			echo "$metarFirstLine"
+			echo "$tafFirstLine"
+			echo
+
+			metar=$( echo "$metar" | grep -v "$metarFirstLine" )
+			taf=$(echo "$taf" | grep -v "$tafFirstLine")
+done
