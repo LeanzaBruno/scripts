@@ -1,43 +1,96 @@
 #!/bin/bash
 
-search=$2
-n=3
-for n in "${@:3:$#}"
+usage() {
+	echo "Uso: smn 	-m, --metar [CODIGO ICAO] [...]		Metar de 1 o mas ADs"
+	echo "		-t, --taf [CODIGO ICAO] [...] 		Taf de 1 o mas ADs"
+	echo "		-mt, -tm [CODIGO ICAO] [...]  		Metar y taf de 1 o mas ADs"
+  exit 1;
+}
+
+check_empty()
+{
+	if [[ ! -n "$1" ]]
+	then
+		usage
+	fi
+}
+
+is_an_option()
+{
+	if [[ "$1" == *"-m"* ]] || [[ "$1" == *"-t"* ]]
+	then
+		return 0
+	fi
+	return 1
+}
+
+while [[ -n "$1" ]]
 do
-	search="$search+$n"
+	case $1 in
+		"-h" | "--help") usage;;
+		"-mt" | "-tf")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && ! is_an_option $1
+			do
+				TAF+="$1+"
+				METAR+="$1+"
+				shift
+			done
+			;;
+		"-m" | "--metar")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && ! is_an_option $1
+			do
+				METAR+="$1+"
+				shift
+			done
+			;;
+		"-t" | "--taf")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && ! is_an_option $1
+			do
+				TAF+="$1+"
+				shift
+			done
+			;;
+		*)
+			usage
+			;;
+	esac
 done
 
-if [[ "$1" == *"m"* ]]; then
-				wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=metar&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${search}" -O metar.html
-fi
-
-if [[ "$1" == *"t"* ]]; then
-				wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=taf&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${search}" -O taf.html
-fi
-#El primer sed sirve para separar los mensajes, porque el SMN los tira todos en una sola linea y es dificil de leer así
-#el segundo grep deja solo los tags que contienen los mensajes
-#el tercer grep toma solamente el intervalo [METAR, "/></td>] segun la  estructura de la pag del smn
-#el ultimo sed es para eliminar del mensaje el "/></td>
-if [[ -f "metar.html" ]]; then
+if [[ -n $METAR ]]; then
+	wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=metar&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${METAR}" -O metar.html
+	#El primer sed sirve para separar los mensajes, porque el SMN los tira todos en una sola linea y es dificil de leer así
+	#el segundo grep deja solo los tags que contienen los mensajes
+	#el tercer grep toma solamente el intervalo [METAR, "/></td>] segun la  estructura de la pag del smn
+	#el ultimo sed es para eliminar del mensaje el "/></td>
 	metar=$(cat metar.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' |  grep -Eo 'METAR.*"\/><\/td>' | sed -e 's!"\/><\/td>!!g')
 	rm metar.html
 fi
 
-if [[ -f "taf.html" ]]; then
+if [[ -n $TAF ]]; then
+	wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=taf&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${TAF}" -O taf.html
 	taf=$(cat taf.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' |  grep -Eo 'TAF.*"\/><\/td>' | sed -e 's!"\/><\/td>!!g')
 	rm taf.html
 fi
 
-#Print the final data
-while [[ $metar != "" ]]
-do
-			metarFirstLine=$(echo "$metar" | head -1)
-			tafFirstLine=$( echo "$taf" | head -1 )
-
-			echo "$metarFirstLine"
-			echo "$tafFirstLine"
-			echo
-
-			metar=$( echo "$metar" | grep -v "$metarFirstLine" )
-			taf=$(echo "$taf" | grep -v "$tafFirstLine")
-done
+#Mostrar los datos
+echo "$metar"
+echo "$taf"
+# while [[ -n $metar ]]
+# do
+# 			metarFirstLine=$(echo "$metar" | head -1)
+# 			tafFirstLine=$( echo "$taf" | head -1 )
+#
+# 			echo "--------"
+# 			echo "$metarFirstLine"
+# 			echo "$tafFirstLine"
+# 			echo "--------"
+#
+# 			metar=$( echo "$metar" | grep -v "$metarFirstLine" )
+# 			taf=$(echo "$taf" | grep -v "$tafFirstLine")
+# done

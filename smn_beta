@@ -1,0 +1,67 @@
+#!/bin/bash
+
+usage() { echo "Uso: smn -m, --metar [CODIGO ICAO] -t, --taf [CODIGO ICAO]"; exit 1; }
+
+check_empty()
+{
+	if [[ ! -n "$1" ]]
+	then
+		usage
+	fi
+}
+
+not_an_option()
+{
+	if [[ "$1" == *"-m"* ]] || [[ "$1" == *"-t"* ]]
+	then
+		usage
+	fi
+	return 0
+}
+
+while [[ -n "$1" ]]
+do
+	case $1 in
+		"-mt" | "-tm")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && not_an_option $1
+			do
+				METAR+="$1+"
+				TAF+="$1+"
+
+				shift
+			done
+			;;
+		"-m" | "--metar")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && not_an_option $1
+			do
+				METAR+="$1+"
+				shift
+			done
+			;;
+		"-t" | "--taf")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && not_an_option $1
+			do
+				TAF+="$1+"
+				shift
+			done
+			;;
+		*)
+			usage
+			;;
+	esac
+done
+
+
+if [[ -n $METAR ]]
+then
+	echo "METARs: $METAR"
+else
+	echo "Metar esta vacio"
+fi
+echo "TAFs: $TAF"
