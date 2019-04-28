@@ -1,10 +1,10 @@
 #!/bin/bash
 
 usage() {
-	echo "Uso: smn 	-m, --metar [CODIGO ICAO] [...]		Metar de 1 o mas ADs"
-	echo "		-t, --taf [CODIGO ICAO] [...] 		Taf de 1 o mas ADs"
-	echo "		-mt, -tm [CODIGO ICAO] [...]  		Metar y taf de 1 o mas ADs"
-	echo "		-p [EZE, CBA, DOZ, CRV ó SIS]		Pronarea de la FIR dada. Esta opcion solo puede usarse sola ya que estos mensajes tienden a ser muy largos"
+	echo "Uso: smn 	m, metar [CODIGO ICAO] [...]		Metar de 1 o mas ADs"
+	echo "		t, taf [CODIGO ICAO] [...] 		Taf de 1 o mas ADs"
+	echo "		mf, metaf [CODIGO ICAO] [...]  		Metar y taf de 1 o mas ADs"
+	echo "		p, pronarea [EZE, CBA, DOZ, CRV ó SIS]	Pronarea de la FIR dada. Esta opcion solo puede usarse sola ya que estos mensajes tienden a ser muy largos"
   	exit 1;
 }
 
@@ -47,14 +47,14 @@ get_taf()
 while [[ -n "$1" ]]
 do
 	case $1 in
-		"-h" | "--help") usage;;
-		"-p" | "--pronarea")
+		"h" | "help") usage;;
+		"p" | "pronarea")
 			shift
 			check_empty $1
 			PRONAREA=$1
 			shift
 			;;
-		"-mf")
+		"mf" | "metaf")
 			shift
 			check_empty $1
 			while [[ -n "$1" ]] && ! is_an_option $1
@@ -64,7 +64,7 @@ do
 				shift
 			done
 			;;
-		"-m" | "--metar")
+		"m" | "metar")
 			shift
 			check_empty $1
 			while [[ -n "$1" ]] && ! is_an_option $1
@@ -73,7 +73,7 @@ do
 				shift
 			done
 			;;
-		"-t" | "--taf")
+		"t" | "taf")
 			shift
 			check_empty $1
 			while [[ -n "$1" ]] && ! is_an_option $1
