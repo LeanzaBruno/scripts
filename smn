@@ -32,14 +32,14 @@ get_metar(){
 	#el segundo grep deja solo los tags que contienen los mensajes
 	#el tercer grep toma solamente el intervalo [METAR, "/></td>] segun la  estructura de la pag del smn
 	#el ultimo sed es para eliminar del mensaje el "/></td>
-	METAR=$(cat metar.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' |  grep -Eo 'METAR.*?="/' | sed -e 's!="/!!g')
+	METAR=$(cat metar.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' |  grep -o 'METAR.*?="/' | sed -e 's!="/!!g')
 	rm metar.html
 }
 
 get_taf()
 {
 	wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=taf&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${1}" -O taf.html
-	TAF=$(cat taf.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' |  grep -Eo 'TAF.*?="/' | sed -e 's!="/!!g' )
+	TAF=$(cat taf.html | sed -e 's!<input type="hidden" !\n!g' | grep -e 'name="[0-9]"' |  grep -Eo 'TAF.*?="/' | sed -e 's!="/!!g' )
 	rm taf.html
 }
 
