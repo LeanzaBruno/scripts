@@ -1,0 +1,109 @@
+#!/bin/bash
+
+usage() {
+	echo "Uso: smn 	m, metar [CODIGO ICAO] [...]		Metar de 1 o mas ADs"
+	echo "		t, taf [CODIGO ICAO] [...] 		Taf de 1 o mas ADs"
+	echo "		mf, metaf [CODIGO ICAO] [...]  		Metar y taf de 1 o mas ADs"
+	echo "		p, pronarea [EZE, CBA, DOZ, CRV ó SIS]	Pronarea de la FIR dada. Esta opcion solo puede usarse sola ya que estos mensajes tienden a ser muy largos"
+  	exit 1;
+}
+
+check_empty(){ if [[ ! -n "$1" ]]; then usage; fi; }
+
+is_an_option(){ if [[ "$1" == *"-m"* ]] || [[ "$1" == *"-t"* ]] || [[ "$1" == *"-p"* ]] ; then return 0; fi; return 1; }
+
+get_pronarea(){
+	case $1 in
+		"EZE" | "eze") PRONAREA=87582;;		#Codigos de las estaciones meteorológicas
+		"CRV" | "crv") PRONAREA=87860;;
+		"CBA" | "cba") PRONAREA=87344;;		#sacados de la pag del SMN
+		"DOZ" | "doz") PRONAREA=87418;;
+		"SIS" | "sis") PRONAREA=87155;;
+		*) usage;;
+	esac
+	wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=pronarea&operacion=consultar&${PRONAREA}=on" -O pronarea.html
+	PRONAREA=$(cat pronarea.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' | grep -o 'PRONAREA.*="\/' | sed -e 's!="\/!!')
+	rm pronarea.html
+}
+
+get_metar(){
+	wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=metar&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${1}" -O metar.html
+	#El primer sed sirve para separar los mensajes, porque el SMN los tira todos en una sola linea y es dificil de leer así
+	#el segundo grep deja solo los tags que contienen los mensajes
+	#el tercer grep toma solamente el intervalo [METAR, "/></td>] segun la  estructura de la pag del smn
+	#el ultimo sed es para eliminar del mensaje el "/></td>
+	METAR=$(cat metar.html | sed -e 's!<input type="hidden" !\n!g' | grep 'name="[0-9]"' | grep -o 'METAR.*="\/' | sed 's!="\/!!' )
+	rm metar.html
+}
+
+get_taf()
+{
+	wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=taf&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${1}" -O taf.html
+	TAF=$(cat taf.html | sed -e 's!<input type="hidden" !\n!g' | grep -e 'name="[0-9]"' |  grep -o 'TAF.*="\/' | sed 's!="\/!!' )
+	rm taf.html
+}
+
+#Lectura de opciones y argumentos
+while [[ -n "$1" ]]
+do
+	case $1 in
+		"h" | "help") usage;;
+		"p" | "pronarea")
+			shift
+			check_empty $1
+			PRONAREA=$1
+			shift
+			;;
+		"mf" | "metaf")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && ! is_an_option $1
+			do
+				TAF+="$1+"
+				METAR+="$1+"
+				shift
+			done
+			;;
+		"m" | "metar")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && ! is_an_option $1
+			do
+				METAR+="$1+"
+				shift
+			done
+			;;
+		"t" | "taf")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && ! is_an_option $1
+			do
+				TAF+="$1+"
+				shift
+			done
+			;;
+	*)usage;;
+	esac
+done
+#Fin de lectura de opciones y argumentos
+
+#Procesamiento de los datos
+if [[ -n $PRONAREA ]]; then get_pronarea $PRONAREA; fi
+if [[ -n $METAR ]]; then get_metar $METAR; fi
+if [[ -n $TAF ]]; then get_taf $TAF; fi
+
+#Mostrar los datos
+if [[ -n $PRONAREA ]]; then
+	echo
+	echo "$PRONAREA"
+fi
+if [[ -n $METAR ]]; then
+	echo
+	echo "METARs:"
+	echo "$METAR"
+fi
+if [[ -n $TAF ]]; then
+	echo
+	echo "TAFs:"
+	echo "$TAF"
+fi
