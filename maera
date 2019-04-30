@@ -1,0 +1,110 @@
+#!/bin/bash
+
+usage() {
+	echo "Mensajes Aeronáuticos Argentinos - M-Aer-A"
+	echo
+	echo "Uso: maera 	m, metar [CODIGO ICAO] [...]		Metar de 1 o mas ADs"
+	echo "		t, taf [CODIGO ICAO] [...] 		Taf de 1 o mas ADs"
+	echo "		mf, metaf [CODIGO ICAO] [...]  		Metar y taf de 1 o mas ADs"
+	echo "		p, pronarea [EZE, CBA, DOZ, CRV ó SIS]	Pronarea de la FIR dada. Esta opcion solo puede usarse sola ya que estos mensajes tienden a ser muy largos"
+  	exit 1;
+}
+
+check_empty(){ if [[ ! -n "$1" ]]; then usage; fi; }
+
+is_an_option(){ if [[ "$1" == *"-m"* ]] || [[ "$1" == *"-t"* ]] || [[ "$1" == *"-p"* ]] ; then return 0; fi; return 1; }
+
+# function parseFile()
+# {
+# 	echo "parseFile: $@"
+# 	#echo "$1" | sed 's!"headerResult"!\n\n!g' | awk -s 'match($0, /width="100%">.*=</) { print substr($0, RSTART+13, RLENGTH-14) }'
+# }
+
+get_pronarea(){
+	case $1 in
+		"EZE" | "eze") PRONAREA=87582;;		#Codigos de las estaciones meteorológicas
+		"CRV" | "crv") PRONAREA=87860;;
+		"CBA" | "cba") PRONAREA=87344;;		#sacados de la pag del SMN
+		"DOZ" | "doz") PRONAREA=87418;;
+		"SIS" | "sis") PRONAREA=87155;;
+		*) usage;;
+	esac
+	wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=pronarea&operacion=consultar&${PRONAREA}=on" -O pronarea.html
+	PRONAREA=$(cat pronarea.html | sed 's!"headerResult"!\n\n!g' | awk -s 'match($0, /width="100%">.*=</) { print substr($0, RSTART+13, RLENGTH-14) }' )
+	rm pronarea.html
+}
+
+get_metar(){
+	wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=metar&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${1}" -O metar.html
+	METAR=$( cat metar.html | sed 's!"headerResult"!\n\n!g' | awk -s 'match($0, /width="100%">.*=</) { print substr($0, RSTART+13, RLENGTH-14) }' )
+	rm metar.html
+}
+
+get_taf()
+{
+	wget -q "https://ssl.smn.gob.ar/mensajes/index.php?observacion=taf&operacion=consultar&tipoEstacion=OACI&CODIGO_FIR=-1&CODIGO=${1}" -O taf.html
+	TAF=$(cat taf.html | sed 's!"headerResult"!\n\n!g' | awk -s 'match($0, /width="100%">.*=</) { print substr($0, RSTART+13, RLENGTH-14) }' )
+	rm taf.html
+}
+
+#Lectura de opciones y argumentos
+while [[ -n "$1" ]]
+do
+	case $1 in
+		"h" | "help") usage;;
+		"p" | "pronarea")
+			shift
+			check_empty $1
+			PRONAREA=$1
+			shift
+			;;
+		"mf" | "metaf")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && ! is_an_option $1
+			do
+				TAF+="$1+"
+				METAR+="$1+"
+				shift
+			done
+			;;
+		"m" | "metar")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && ! is_an_option $1
+			do
+				METAR+="$1+"
+				shift
+			done
+			;;
+		"t" | "taf")
+			shift
+			check_empty $1
+			while [[ -n "$1" ]] && ! is_an_option $1
+			do
+				TAF+="$1+"
+				shift
+			done
+			;;
+	*)usage;;
+	esac
+done
+#Fin de lectura de opciones y argumentos
+
+#Procesamiento de los datos
+if [[ -n $PRONAREA ]]; then get_pronarea $PRONAREA; fi
+if [[ -n $METAR ]]; then get_metar $METAR; fi
+if [[ -n $TAF ]]; then get_taf $TAF; fi
+
+#Mostrar los datos
+if [[ -n $PRONAREA ]]; then
+	echo "$PRONAREA"
+fi
+if [[ -n $METAR ]]; then
+	echo "METARs:"
+	echo "$METAR"
+fi
+if [[ -n $TAF ]]; then
+	echo "TAFs:"
+	echo "$TAF"
+fi
