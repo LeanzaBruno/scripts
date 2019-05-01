@@ -1,0 +1,133 @@
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <iomanip>
+#include <map>
+#include <list>
+#include <algorithm>
+#include <unordered_map>
+#include <cassert>
+using namespace std;
+
+//Conversion functions
+using Func = float(*)(float);	
+float MtoFT( float meters){ return meters*3.28084; }	
+float FTtoM( float feets){ return feets*0.3048; }
+float FTtoKM( float feets){ return feets*0.3048*0.001; }
+float NMtoM( float nm ){ return nm*1852; }
+float MtoNM( float meters ){ return meters*0.000539957; }
+float NMtoKM( float nm ){ return NMtoM(nm)*0.001; }
+float KMtoNM( float km ) { return km*0.539957; }
+float CtoF( float celsius){ return (celsius*.18)+32; }
+float FtoC( float fahrenheits ){ return (fahrenheits-32)/1.8; }
+float LBStoKG( float lbs ){ return lbs*0.453592; }
+float KGtoLBS( float kg ){ return kg*2.20462; }
+float GALtoLT( float gallons){ return gallons*3.78541; }
+float LTtoGAL( float lts ){ return lts*0.264172; }
+float InHgtoHPA( float inHg ){ return inHg*33.86; }
+float HPAtoInHg( float hpa ){ return hpa*0.0296133971008484; }
+float MItoKM( float mi ){ return mi*1.609344; }
+
+//End of conversion functions
+
+const list<pair<string, Func>> relations = { 
+									{"ft_m", FTtoM},
+									{"ft_km", FTtoKM},
+									{"nm_m", NMtoM},
+									{"nm_km", NMtoKM},
+									{"km_nm", KMtoNM},
+									{"C_F", CtoF},
+									{"F_C", FtoC},
+									{"m_nm", MtoNM},
+									{"m_ft", MtoFT},
+									{"lb_kg", LBStoKG},
+									{"kg_lb", KGtoLBS},
+									{"lt_gal", LTtoGAL},
+									{"gal_lt", GALtoLT},
+									{"inHg_hpa", InHgtoHPA},
+									{"hpa_inHg", HPAtoInHg},
+									{"mi_km", MItoKM }
+};
+
+
+size_t findFromUnit( string fromString )
+{
+	for( auto const& it : relations )
+	{
+		string from = it.first.substr(0, it.first.find('_'));
+		size_t pos = fromString.find( from );
+		if( pos != string::npos )
+			return pos;
+	}
+	return string::npos;
+}
+
+list<pair<string,Func>>::const_iterator findFunction( const string & merge )
+{
+	for( auto it = relations.begin() ; it != relations.end() ; ++it )
+		if( it->first == merge )
+			return it;
+	return relations.end();
+}
+
+
+//---------------------------------------------------
+bool containsNumbers( const string& argumento )
+{
+	for( auto const& letra : argumento ) if( isdigit(letra) ) return true;
+	return false;
+}
+
+void printError(){ cout << "Wrong or incorrect Data. Check the help using -h or --help" << endl; exit(0); }
+
+void printHelp()
+{
+	cout << "Syntaxis example:	converter 150ft to m" << endl << endl;
+	cout << "Available conversions and viceversa:" << endl;
+	cout << "				-feets(ft) to meters(m)" << endl;
+	cout << "				-celsius degrees(C) to fahrenheit degrees(F)." << endl;
+	cout << "				-USA gallon(gal) to liters(lt)" << endl;
+	cout << "				-pounds(lb) to kilogram(kg)" << endl;
+	cout << "				-nautical miles(nm) to kilometers(km)" << endl;
+	cout << "				-nautical miles(nm) to meters(m)" << endl;
+	cout << "				-Inchees Hg(inHg) to hectopascals(hpa)" << endl;
+	cout << "				-Statute miles(mi) to kilometers(km)" << endl;
+	exit(0);
+}
+
+float convert(float fromFloat, string fromUnit, string toUnit )
+{
+	if( fromUnit == toUnit ) return fromFloat;
+	string merge = fromUnit+"_"+toUnit;
+	auto funcIt = findFunction( merge );
+	if( funcIt == relations.end() ) printError();
+	return funcIt->second(fromFloat);
+}
+
+int main(int argc, char *argv[]) {
+	if( argc == 1 ) printError();
+	string fromUnit;
+	float fromFloat;
+	
+	for( int i = 1 ; i < argc ; ++i )
+	{
+		const string argumento = argv[i];
+		if( argumento == "-h" or argumento == "--help" ) printHelp();
+		if( containsNumbers( argumento ) )
+		{
+			const size_t posUnit = findFromUnit( argumento );
+			fromUnit = argumento.substr( posUnit );								//Guarda la unidad desde la cual se hace la conversión
+			if( fromUnit == "" ) printError();
+			fromFloat = stof( argumento.substr( 0, posUnit ) );
+		}
+		else if( argumento == "-t" or argumento == "to" )
+		{
+			if( argv[i+1] == nullptr ) printError();					
+			string toUnit = argv[i+1];
+			cout << fixed << setprecision(4);
+			cout << "Conversion: " << fromFloat << " " << fromUnit << " = " << convert( fromFloat, fromUnit, toUnit ) <<  " " << toUnit << endl;
+		}
+	}
+	return 0;
+}
+
